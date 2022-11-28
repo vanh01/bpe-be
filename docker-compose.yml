@@ -1,0 +1,44 @@
+version: "3"
+
+services:
+  web:
+    build:
+      context: .
+      target: bpe-be
+    container_name: bpe-be
+    image: golang:alpine3.16
+    volumes:
+      - ./:/go/src/bpe
+    ports:
+      - "8080:8080"
+    working_dir: /go/src/bpe
+    command: sh -c "go mod tidy && go run main.go"
+    # docker exec -it bpe-be bash
+    # go mod tidy && go run main.go
+    restart: unless-stopped
+    tty: true
+  db:
+    container_name: bpe-db
+    image: mysql:8.0
+    cap_add:
+      - SYS_NICE
+    restart: unless-stopped
+    environment:
+      - MYSQL_DATABASE=bpe
+      - MYSQL_ROOT_PASSWORD=admin
+      - MYSQL_USER=bpe
+      - MYSQL_PASSWORD=123456
+    ports:
+      - '3306:3306'
+    volumes:
+      - mysql:/var/lib/mysql
+      - ./mysql-database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    # command: /bin/bash
+    # docker exec -it bpe-db /bin/bash
+    # mysql -uroot -p
+    # enter root password
+    # donen 
+volumes:
+  mysql:
+    name: mysql
+    driver: local
