@@ -2,8 +2,6 @@ package evaluate
 
 import (
 	"bpe/usecase"
-	"bpe/usecase/evaluate"
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -19,10 +17,8 @@ func NewEvaluateRouter(iUsecase usecase.EvaluateUsecaseInterface) *evaluateRoute
 }
 
 func (t *evaluateRouter) EvaluateCycleTimeHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Printf("%s %s %s %s", time.Now().In(time.FixedZone("UTC+7", +7*60*60)), r.Proto, r.RequestURI, r.Method)
-	var items map[string]evaluate.Element
+	fmt.Printf("%s %s %s %s\n", time.Now().In(time.FixedZone("UTC+7", +7*60*60)), r.Proto, r.RequestURI, r.Method)
 	body, _ := ioutil.ReadAll(r.Body)
-	json.Unmarshal(body, &items)
-	result, _ := t.iUsecase.EvaluateCycleTime(items)
+	result, _ := t.iUsecase.EvaluateCycleTime(body)
 	w.Write([]byte(fmt.Sprint(result)))
 }

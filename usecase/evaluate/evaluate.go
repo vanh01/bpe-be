@@ -1,5 +1,9 @@
 package evaluate
 
+import (
+	"encoding/json"
+)
+
 type evaluateUsecase struct{}
 
 func NewEvaluateUsecase() *evaluateUsecase {
@@ -14,6 +18,13 @@ type Element struct {
 	Type                   string    `json:"type"`
 	CycleTime              float64   `json:"cycleTime"`
 	BranchingProbabilities []float64 `json:"branchingProbabilities"`
+}
+
+type context struct {
+	listGateway         map[string]int
+	listGatewayTraveled map[string]interface{}
+	stackNextGateway    gateWayStack
+	stackEndLoop        gateWayStack
 }
 
 func createNodeList(mapElement map[string]Element) map[string]interface{} {
@@ -66,11 +77,13 @@ func buildGraph(mapElement map[string]Element, mapNodeCreated *map[string]interf
 	return startNode
 }
 
-func (e *evaluateUsecase) EvaluateCycleTime(mapElement map[string]Element) (float64, error) {
+func (e *evaluateUsecase) EvaluateCycleTime(body []byte) (float64, error) {
+	var mapElement map[string]Element
+	json.Unmarshal(body, &mapElement)
 	mapNodeCreated := createNodeList(mapElement)
 	startNode := buildGraph(mapElement, &mapNodeCreated)
 	travel := &travel{}
 
-	result, _ := startNode.accept(travel)
+	result, _ := startNode.accept(travel, &context{listGateway: make(map[string]int), listGatewayTraveled: make(map[string]interface{})})
 	return result, nil
 }

@@ -1,8 +1,8 @@
 package evaluate
 
 type visitor interface {
-	visit(interface{}) (float64, interface{})
-	visitForEvent(*event) (float64, interface{})
-	visitForTask(*task) (float64, interface{})
-	visitForGateway(*gateway) (float64, interface{})
+	visit(interface{}, *context) (float64, interface{})
+	visitForEvent(*event, *context) (float64, interface{})
+	visitForTask(*task, *context) (float64, interface{})
+	visitForGateway(*gateway, *context) (float64, interface{})
 }
