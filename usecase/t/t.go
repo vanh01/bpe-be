@@ -6,15 +6,15 @@ import (
 	"fmt"
 )
 
-type TUsecase struct {
+type tUsecase struct {
 	tRepositoryInterface repository.TRepositoryInterface
 }
 
-func NewTUsecase(tRepositoryInterface repository.TRepositoryInterface) *TUsecase {
-	return &TUsecase{tRepositoryInterface: tRepositoryInterface}
+func NewTUsecase(tRepositoryInterface repository.TRepositoryInterface) *tUsecase {
+	return &tUsecase{tRepositoryInterface: tRepositoryInterface}
 }
 
-func (t *TUsecase) Add(tModel *model.T) error {
+func (t *tUsecase) Add(tModel *model.T) error {
 	fmt.Println("usecase ne")
 	t.tRepositoryInterface.Add(tModel)
 	return nil

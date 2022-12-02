@@ -5,13 +5,13 @@ import (
 	"fmt"
 )
 
-type TRepository struct{}
+type tRepository struct{}
 
-func NewTRepository() *TRepository {
-	return &TRepository{}
+func NewTRepository() *tRepository {
+	return &tRepository{}
 }
 
-func (tRepository *TRepository) Add(t *model.T) error {
+func (tRepository *tRepository) Add(t *model.T) error {
 	fmt.Println("repository ne")
 	return nil
 }
