@@ -1,0 +1,25 @@
+package evaluate
+
+type gateway struct {
+	node
+	branchingProbabilities []float64
+}
+
+func (g *gateway) isSplitGateway() bool {
+	return len(g.Next) > 1
+}
+
+func (g *gateway) isJoinGateway() bool {
+	return len(g.Previous) > 1
+}
+
+func (g *gateway) accept(v visitor) (float64, interface{}) {
+	return v.visitForGateway(g)
+}
+
+func isEqual(a, b *gateway) bool {
+	if a.Id == b.Id {
+		return true
+	}
+	return false
+}

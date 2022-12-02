@@ -2,7 +2,9 @@ package router
 
 import (
 	tRepository "bpe/repository/t"
+	evaluateRouter "bpe/router/evaluate"
 	tRouter "bpe/router/t"
+	evaluateUsecase "bpe/usecase/evaluate"
 	TUsecase "bpe/usecase/t"
 	"net/http"
 
@@ -14,4 +16,7 @@ func MapRouters(r *mux.Router) {
 	tUse := TUsecase.NewTUsecase(tRep)
 	tRou := tRouter.NewTRouter(tUse)
 	r.HandleFunc("/api/t", tRou.TTestHandler).Methods(http.MethodGet)
+	evaluateUse := evaluateUsecase.NewEvaluateUsecase()
+	evaluateRou := evaluateRouter.NewEvaluateRouter(evaluateUse)
+	r.HandleFunc("/api/evaluate/time", evaluateRou.EvaluateCycleTimeHandler).Methods(http.MethodPost)
 }
