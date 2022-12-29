@@ -15,30 +15,27 @@ services:
     command: sh -c "go mod tidy && go run main.go"
     # docker exec -it bpe-be bash
     # go mod tidy && go run main.go
+    depends_on:
+      - db
     restart: unless-stopped
     tty: true
   db:
     container_name: bpe-db
-    image: mysql:8.0
-    cap_add:
-      - SYS_NICE
+    image: postgres:15.1-alpine
     restart: unless-stopped
     environment:
-      - MYSQL_DATABASE=bpe
-      - MYSQL_ROOT_PASSWORD=admin
-      - MYSQL_USER=bpe
-      - MYSQL_PASSWORD=123456
+      - POSTGRES_USER=bpe
+      - POSTGRES_PASSWORD=123456
     ports:
-      - '3306:3306'
+      - '5432:5432'
     volumes:
-      - mysql:/var/lib/mysql
-      - ./mysql-database/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - postgre:/var/lib/postgresql/data
+      - ./postgre-database/init.sql:/docker-entrypoint-initdb.d/init.sql
     # command: /bin/bash
     # docker exec -it bpe-db /bin/bash
-    # mysql -uroot -p
-    # enter root password
+    # psql --username bpe
     # donen 
 volumes:
-  mysql:
-    name: mysql
+  postgre:
+    name: postgre
     driver: local
