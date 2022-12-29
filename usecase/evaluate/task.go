@@ -2,9 +2,7 @@ package evaluate
 
 type task struct {
 	node
-	CycleTime    float64
-	StartGateway string
-	EndGateway   string
+	CycleTime float64
 }
 
 func (t *task) accept(v visitor, c *context) (float64, interface{}) {

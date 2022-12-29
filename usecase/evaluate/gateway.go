@@ -16,10 +16,3 @@ func (g *gateway) isJoinGateway() bool {
 func (g *gateway) accept(v visitor, c *context) (float64, interface{}) {
 	return v.visitForGateway(g, c)
 }
-
-func isEqual(a, b *gateway) bool {
-	if a.Id == b.Id {
-		return true
-	}
-	return false
-}
