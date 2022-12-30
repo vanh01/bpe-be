@@ -1,53 +1,53 @@
 package evaluate
 
-type travel struct {
+type evaluateTime struct {
 }
 
-func (t *travel) visit(i interface{}, c *context) (float64, interface{}) {
+func (et *evaluateTime) visit(i interface{}, c *context) (float64, interface{}) {
 	switch i.(type) {
 	case *event:
-		return t.visitForEvent(i.(*event), c)
+		return et.visitForEvent(i.(*event), c)
 	case *task:
-		return t.visitForTask(i.(*task), c)
+		return et.visitForTask(i.(*task), c)
 	case *gateway:
-		return t.visitForGateway(i.(*gateway), c)
+		return et.visitForGateway(i.(*gateway), c)
 	}
 	return 0, nil
 }
 
-func (t *travel) visitForEvent(e *event, c *context) (float64, interface{}) {
+func (et *evaluateTime) visitForEvent(e *event, c *context) (float64, interface{}) {
 	// fmt.Printf("Visit: %-50s| %-20s\n", e.Id, e.Name)
 	var totalCycleTime = 0.0
 	for _, n := range e.Next {
-		nextResult, nextNode := t.visit(n, c)
+		nextResult, nextNode := et.visit(n, c)
 		totalCycleTime += nextResult
-		totalCycleTime += calculateCyclyTimeNextNode(t, nextNode, c)
+		totalCycleTime += et.calculateCyclyTimeNextNode(nextNode, c)
 	}
 	return totalCycleTime, nil
 }
 
-func (t *travel) visitForTask(tk *task, c *context) (float64, interface{}) {
+func (et *evaluateTime) visitForTask(tk *task, c *context) (float64, interface{}) {
 	// fmt.Printf("Visit: %-50s| %-20s\n", tk.Id, tk.Name)
-	nextResult, nextNode := t.visit(tk.Next[0], c)
+	nextResult, nextNode := et.visit(tk.Next[0], c)
 	totalCycleTime := tk.CycleTime + nextResult
-	totalCycleTime += calculateCyclyTimeNextNode(t, nextNode, c)
+	totalCycleTime += et.calculateCyclyTimeNextNode(nextNode, c)
 	return totalCycleTime, nil
 }
 
-func (t *travel) visitForGateway(g *gateway, c *context) (float64, interface{}) {
+func (et *evaluateTime) visitForGateway(g *gateway, c *context) (float64, interface{}) {
 	// fmt.Printf("Visit: %-50s| %-20s\n", g.Id, g.Name)
 	c.listGatewayTraveled[g.Id] = g
 
 	if g.isJoinGateway() {
-		return handleForJoinGateway(t, g, c)
+		return et.handleForJoinGateway(g, c)
 	}
 	if g.isSplitGateway() {
-		return handleForSplitGateway(t, g, c)
+		return et.handleForSplitGateway(g, c)
 	}
 	return 0.0, nil
 }
 
-func handleForJoinGateway(t *travel, g *gateway, c *context) (float64, interface{}) {
+func (et *evaluateTime) handleForJoinGateway(g *gateway, c *context) (float64, interface{}) {
 	if _, check := c.listGateway[g.Id]; check {
 		c.listGateway[g.Id] += 1
 	} else {
@@ -58,17 +58,17 @@ func handleForJoinGateway(t *travel, g *gateway, c *context) (float64, interface
 		return 0, nil
 	}
 	// kiem tra xem day la mot gateway bat dau khoi loop hay khong
-	if check, previous := checkNodeTravel(g.Previous, c); !check {
+	if check, previous := et.checkNodeTravel(g.Previous, c); !check {
 		// fmt.Println("Start loop!")
 		c.stackEndLoop.Push(previous.(*gateway))
-		return handleForLoop(t, g, previous, c)
+		return et.handleForLoop(g, previous, c)
 	}
 	// fmt.Println("End gateway!")
 	c.stackNextGateway.Push(g)
 	return 0, nil
 }
 
-func handleForSplitGateway(t *travel, g *gateway, c *context) (float64, interface{}) {
+func (et *evaluateTime) handleForSplitGateway(g *gateway, c *context) (float64, interface{}) {
 	var totalCycleTime = 0.0
 	var nextNode interface{}
 	// xu li cho gateway dong loop
@@ -80,8 +80,8 @@ func handleForSplitGateway(t *travel, g *gateway, c *context) (float64, interfac
 	// fmt.Println("Start gateway!")
 	// xu li cho split gateway binh thuong
 	for i, branch := range g.Next {
-		branchCycleTime, nextN := t.visit(branch, c)
-		branchCycleTime += calculateCyclyTimeNextNode(t, nextN, c)
+		branchCycleTime, nextN := et.visit(branch, c)
+		branchCycleTime += et.calculateCyclyTimeNextNode(nextN, c)
 		nextNode = nil
 		switch g.Name {
 		case "ParallelGateway":
@@ -102,19 +102,8 @@ func handleForSplitGateway(t *travel, g *gateway, c *context) (float64, interfac
 	return totalCycleTime, nextNode
 }
 
-// tinh so luong gateway
-func numberOfGatewayInNodes(nodes []interface{}) int {
-	count := 0
-	for _, n := range nodes {
-		if isGateway(n) {
-			count += 1
-		}
-	}
-	return count
-}
-
 // check xem co gateway da duoc duyet hay chua
-func checkNodeTravel(nodes []interface{}, c *context) (bool, interface{}) {
+func (et *evaluateTime) checkNodeTravel(nodes []interface{}, c *context) (bool, interface{}) {
 	for _, n := range nodes {
 		if isGateway(n) {
 			id := n.(*gateway).Id
@@ -126,29 +115,22 @@ func checkNodeTravel(nodes []interface{}, c *context) (bool, interface{}) {
 	return true, nil
 }
 
-func calculateCyclyTimeNextNode(t *travel, nextNode interface{}, c *context) float64 {
+// tinh toan cycle time cho nhung next node tiep theo
+func (et *evaluateTime) calculateCyclyTimeNextNode(nextNode interface{}, c *context) float64 {
 	timeResult := 0.0
 	for nextNode != nil {
-		nextNextResult, nextNextNode := t.visit(nextNode, c)
+		nextNextResult, nextNextNode := et.visit(nextNode, c)
 		nextNode = nextNextNode
 		timeResult += nextNextResult
 	}
 	return timeResult
 }
 
-func isGateway(g interface{}) bool {
-	switch g.(type) {
-	case *gateway:
-		return true
-	}
-	return false
-}
-
 // xu li tinh toan cho loop
-func handleForLoop(t *travel, start interface{}, end interface{}, c *context) (float64, interface{}) {
+func (et *evaluateTime) handleForLoop(start interface{}, end interface{}, c *context) (float64, interface{}) {
 	startGateway := start.(*gateway)
 	endGateway := end.(*gateway)
-	timeResult, _ := t.visit(startGateway.Next[0], c)
+	timeResult, _ := et.visit(startGateway.Next[0], c)
 	var reloop float64
 	var nextNode interface{}
 

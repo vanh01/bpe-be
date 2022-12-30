@@ -18,5 +18,5 @@ func MapRouters(r *mux.Router) {
 	r.HandleFunc("/api/t", tRou.TTestHandler).Methods(http.MethodGet)
 	evaluateUse := evaluateUsecase.NewEvaluateUsecase()
 	evaluateRou := evaluateRouter.NewEvaluateRouter(evaluateUse)
-	r.HandleFunc("/api/evaluate/time", evaluateRou.EvaluateCycleTimeHandler).Methods(http.MethodPost)
+	r.HandleFunc("/api/evaluate/time", evaluateRou.EvaluateHandler).Methods(http.MethodPost)
 }

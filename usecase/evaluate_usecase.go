@@ -1,5 +1,5 @@
 package usecase
 
 type EvaluateUsecaseInterface interface {
-	EvaluateCycleTime([]byte) (float64, error)
+	Evaluate([]byte) (map[string]interface{}, error)
 }

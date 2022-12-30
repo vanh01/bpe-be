@@ -10,7 +10,7 @@ func NewEvaluateUsecase() *evaluateUsecase {
 	return &evaluateUsecase{}
 }
 
-type Element struct {
+type element struct {
 	Id                     string    `json:"id"`
 	Name                   string    `json:"name"`
 	Incoming               []string  `json:"incoming"`
@@ -20,6 +20,12 @@ type Element struct {
 	BranchingProbabilities []float64 `json:"branchingProbabilities"`
 }
 
+type env struct {
+	mapElement     map[string]element
+	mapNodeCreated map[string]interface{}
+	startNode      *event
+}
+
 type context struct {
 	listGateway         map[string]int
 	listGatewayTraveled map[string]interface{}
@@ -27,7 +33,8 @@ type context struct {
 	stackEndLoop        gateWayStack
 }
 
-func createNodeList(mapElement map[string]Element) map[string]interface{} {
+// tao mot map chua node tu cai json ban dau
+func createNodeList(mapElement map[string]element) map[string]interface{} {
 	mapNodeCreated := make(map[string]interface{})
 	for _, i := range mapElement {
 		if i.Type == "event" {
@@ -44,46 +51,86 @@ func createNodeList(mapElement map[string]Element) map[string]interface{} {
 	return mapNodeCreated
 }
 
-func getNodeOfIds(ids []string, mapElement map[string]Element, mapNodeCreated *map[string]interface{}) []interface{} {
+// get node from list id
+func getNodeOfIds(ids []string, mapNodeCreated *map[string]interface{}) []interface{} {
 	var result []interface{}
 	for _, id := range ids {
-		if _, check := mapElement[id]; check {
-			result = append(result, (*mapNodeCreated)[id])
-		}
+		result = append(result, (*mapNodeCreated)[id])
 	}
 	return result
 }
 
-func buildGraph(mapElement map[string]Element, mapNodeCreated *map[string]interface{}) *event {
+// lien ket cac node lai voi nhau
+func buildGraph(mapElement map[string]element, mapNodeCreated *map[string]interface{}) *event {
 	var startNode *event
 	for _, i := range mapElement {
 		if i.Type == "event" {
 			event := (*mapNodeCreated)[i.Id].(*event)
-			event.Previous = getNodeOfIds(i.Incoming, mapElement, mapNodeCreated)
-			event.Next = getNodeOfIds(i.Outgoing, mapElement, mapNodeCreated)
+			event.Previous = getNodeOfIds(i.Incoming, mapNodeCreated)
+			event.Next = getNodeOfIds(i.Outgoing, mapNodeCreated)
 			if event.Name == "StartEvent" {
 				startNode = event
 			}
 		} else if i.Type == "task" {
 			task := (*mapNodeCreated)[i.Id].(*task)
-			task.Previous = getNodeOfIds(i.Incoming, mapElement, mapNodeCreated)
-			task.Next = getNodeOfIds(i.Outgoing, mapElement, mapNodeCreated)
+			task.Previous = getNodeOfIds(i.Incoming, mapNodeCreated)
+			task.Next = getNodeOfIds(i.Outgoing, mapNodeCreated)
 		} else if i.Type == "gateway" {
 			gateway := (*mapNodeCreated)[i.Id].(*gateway)
-			gateway.Previous = getNodeOfIds(i.Incoming, mapElement, mapNodeCreated)
-			gateway.Next = getNodeOfIds(i.Outgoing, mapElement, mapNodeCreated)
+			gateway.Previous = getNodeOfIds(i.Incoming, mapNodeCreated)
+			gateway.Next = getNodeOfIds(i.Outgoing, mapNodeCreated)
 		}
 	}
 	return startNode
 }
 
-func (e *evaluateUsecase) EvaluateCycleTime(body []byte) (float64, error) {
-	var mapElement map[string]Element
-	json.Unmarshal(body, &mapElement)
-	mapNodeCreated := createNodeList(mapElement)
-	startNode := buildGraph(mapElement, &mapNodeCreated)
-	travel := &travel{}
-
-	result, _ := startNode.accept(travel, &context{listGateway: make(map[string]int), listGatewayTraveled: make(map[string]interface{})})
+func (e *evaluateUsecase) Evaluate(body []byte) (map[string]interface{}, error) {
+	env := &env{}
+	if err := json.Unmarshal(body, &env.mapElement); err != nil {
+		return nil, err
+	}
+	env.mapNodeCreated = createNodeList(env.mapElement)
+	env.startNode = buildGraph(env.mapElement, &env.mapNodeCreated)
+	result := make(map[string]interface{})
+	result["time"], _ = e.EvaluateCycleTime(env)
+	result["quality"], _ = e.EvaluateQuality(env)
+	result["flexibility"], _ = e.EvaluateQuality(env)
+	result["transparency"], _ = e.EvaluateQuality(env)
+	result["exceptionHandling"], _ = e.EvaluateQuality(env)
 	return result, nil
+}
+
+func (e *evaluateUsecase) EvaluateCycleTime(en *env) (float64, error) {
+	evaluateTime := &evaluateTime{}
+	contextTime := context{listGateway: make(map[string]int), listGatewayTraveled: make(map[string]interface{})}
+	result, _ := evaluateTime.visit(en.startNode, &contextTime)
+	return result, nil
+}
+
+func (e *evaluateUsecase) EvaluateQuality(en *env) (float64, error) {
+	// evaluateQuality := &evaluateQuality{}
+	// contextQuality := context{listGateway: make(map[string]int), listGatewayTraveled: make(map[string]interface{})}
+	// result, _ := evaluateQuality.visit(en.startNode, &contextQuality)
+	return 0.0, nil
+}
+
+func (e *evaluateUsecase) EvaluateFlexibility(en *env) (float64, error) {
+	// evaluateFlexibility := &evaluateFlexibility{}
+	// contextFlexibility := context{listGateway: make(map[string]int), listGatewayTraveled: make(map[string]interface{})}
+	// evaluateFlexibility.visit(en.startNode, &contextFlexibility)
+	return 0.0, nil
+}
+
+func (e *evaluateUsecase) EvaluateTransparency(en *env) (float64, error) {
+	// evaluateTransparency := &evaluateTransparency{}
+	// contextTransparency := context{listGateway: make(map[string]int), listGatewayTraveled: make(map[string]interface{})}
+	// result, _ := evaluateTransparency.visit(en.startNode, &contextTransparency)
+	return 0.0, nil
+}
+
+func (e *evaluateUsecase) EvaluateExceptionHandling(en *env) (float64, error) {
+	// evaluateExceptionHandling := &evaluateExceptionHandling{}
+	// contextExceptionHandling := context{listGateway: make(map[string]int), listGatewayTraveled: make(map[string]interface{})}
+	// result, _ := evaluateExceptionHandling.visit(en.startNode, &contextExceptionHandling)
+	return 0.0, nil
 }

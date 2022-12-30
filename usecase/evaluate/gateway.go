@@ -12,7 +12,3 @@ func (g *gateway) isSplitGateway() bool {
 func (g *gateway) isJoinGateway() bool {
 	return len(g.Previous) > 1
 }
-
-func (g *gateway) accept(v visitor, c *context) (float64, interface{}) {
-	return v.visitForGateway(g, c)
-}
