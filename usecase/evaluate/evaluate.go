@@ -31,6 +31,7 @@ type context struct {
 	listGatewayTraveled map[string]interface{}
 	stackNextGateway    gateWayStack
 	stackEndLoop        gateWayStack
+	inXorBlock          int
 }
 
 type result struct {
@@ -97,11 +98,14 @@ func (e *evaluateUsecase) Evaluate(body []byte) (map[string]interface{}, error) 
 	}
 	env.mapNodeCreated = createNodeList(env.mapElement)
 	env.startNode = buildGraph(env.mapElement, &env.mapNodeCreated)
-	rlt := result{currentCycleTime: 0.0}
+	rlt := result{currentCycleTime: 0.0, numberOfOptionalTasks: 0, numberOfTotalTasks: 0}
 	evaluateTime := &evaluateAll{}
 	contextTime := context{listGateway: make(map[string]int), listGatewayTraveled: make(map[string]interface{})}
 	evaluateTime.visit(env.startNode, &contextTime, &rlt)
 	rs := make(map[string]interface{})
 	rs["cycle_time"] = rlt.currentCycleTime
+	rs["numberOfOptionalTasks"] = rlt.numberOfOptionalTasks
+	rs["numberOfTotalTasks"] = rlt.numberOfTotalTasks
+	rs["flexibility"] = float64(rlt.numberOfOptionalTasks) / float64(rlt.numberOfTotalTasks)
 	return rs, nil
 }

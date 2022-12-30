@@ -33,6 +33,10 @@ func (et *evaluateAll) visitForEvent(e *event, c *context, r *result) interface{
 func (et *evaluateAll) visitForTask(tk *task, c *context, r *result) interface{} {
 	// fmt.Printf("Visit: %-50s| %-20s\n", tk.Id, tk.Name)
 	nextNode := et.visit(tk.Next[0], c, r)
+	r.numberOfTotalTasks += 1
+	if c.inXorBlock > 0 {
+		r.numberOfOptionalTasks += 1
+	}
 	nextResult := r.currentCycleTime
 	totalCycleTime := tk.CycleTime + nextResult
 	et.calculateCyclyTimeNextNode(nextNode, c, r)
@@ -90,6 +94,9 @@ func (et *evaluateAll) handleForSplitGateway(g *gateway, c *context, r *result) 
 	}
 	// fmt.Println("Start gateway!")
 	// xu li cho split gateway binh thuong
+	if g.Name == "ExclusiveGateway" {
+		c.inXorBlock += 1
+	}
 	for i, branch := range g.Next {
 		nextN := et.visit(branch, c, r)
 		branchCycleTime := r.currentCycleTime
@@ -108,6 +115,9 @@ func (et *evaluateAll) handleForSplitGateway(g *gateway, c *context, r *result) 
 		case "ExclusiveGateway":
 			totalCycleTime += g.branchingProbabilities[i] * branchCycleTime
 		}
+	}
+	if g.Name == "ExclusiveGateway" {
+		c.inXorBlock -= 1
 	}
 	if c.stackNextGateway.IsNotEmpty() {
 		nextNode, _ = c.stackNextGateway.Pop()
