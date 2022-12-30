@@ -33,6 +33,12 @@ type context struct {
 	stackEndLoop        gateWayStack
 }
 
+type result struct {
+	currentCycleTime      float64
+	numberOfOptionalTasks int
+	numberOfTotalTasks    int
+}
+
 // tao mot map chua node tu cai json ban dau
 func createNodeList(mapElement map[string]element) map[string]interface{} {
 	mapNodeCreated := make(map[string]interface{})
@@ -91,46 +97,11 @@ func (e *evaluateUsecase) Evaluate(body []byte) (map[string]interface{}, error) 
 	}
 	env.mapNodeCreated = createNodeList(env.mapElement)
 	env.startNode = buildGraph(env.mapElement, &env.mapNodeCreated)
-	result := make(map[string]interface{})
-	result["time"], _ = e.EvaluateCycleTime(env)
-	result["quality"], _ = e.EvaluateQuality(env)
-	result["flexibility"], _ = e.EvaluateQuality(env)
-	result["transparency"], _ = e.EvaluateQuality(env)
-	result["exceptionHandling"], _ = e.EvaluateQuality(env)
-	return result, nil
-}
-
-func (e *evaluateUsecase) EvaluateCycleTime(en *env) (float64, error) {
-	evaluateTime := &evaluateTime{}
+	rlt := result{currentCycleTime: 0.0}
+	evaluateTime := &evaluateAll{}
 	contextTime := context{listGateway: make(map[string]int), listGatewayTraveled: make(map[string]interface{})}
-	result, _ := evaluateTime.visit(en.startNode, &contextTime)
-	return result, nil
-}
-
-func (e *evaluateUsecase) EvaluateQuality(en *env) (float64, error) {
-	// evaluateQuality := &evaluateQuality{}
-	// contextQuality := context{listGateway: make(map[string]int), listGatewayTraveled: make(map[string]interface{})}
-	// result, _ := evaluateQuality.visit(en.startNode, &contextQuality)
-	return 0.0, nil
-}
-
-func (e *evaluateUsecase) EvaluateFlexibility(en *env) (float64, error) {
-	// evaluateFlexibility := &evaluateFlexibility{}
-	// contextFlexibility := context{listGateway: make(map[string]int), listGatewayTraveled: make(map[string]interface{})}
-	// evaluateFlexibility.visit(en.startNode, &contextFlexibility)
-	return 0.0, nil
-}
-
-func (e *evaluateUsecase) EvaluateTransparency(en *env) (float64, error) {
-	// evaluateTransparency := &evaluateTransparency{}
-	// contextTransparency := context{listGateway: make(map[string]int), listGatewayTraveled: make(map[string]interface{})}
-	// result, _ := evaluateTransparency.visit(en.startNode, &contextTransparency)
-	return 0.0, nil
-}
-
-func (e *evaluateUsecase) EvaluateExceptionHandling(en *env) (float64, error) {
-	// evaluateExceptionHandling := &evaluateExceptionHandling{}
-	// contextExceptionHandling := context{listGateway: make(map[string]int), listGatewayTraveled: make(map[string]interface{})}
-	// result, _ := evaluateExceptionHandling.visit(en.startNode, &contextExceptionHandling)
-	return 0.0, nil
+	evaluateTime.visit(env.startNode, &contextTime, &rlt)
+	rs := make(map[string]interface{})
+	rs["cycle_time"] = rlt.currentCycleTime
+	return rs, nil
 }
