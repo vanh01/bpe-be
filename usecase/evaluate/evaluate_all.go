@@ -71,8 +71,9 @@ func (et *evaluateAll) handleForJoinGateway(g *gateway, c *context, r *result) i
 		return nil
 	}
 	// kiem tra xem day la mot gateway bat dau khoi loop hay khong
-	if check, previous := et.checkNodeTravel(g.Previous, c); !check {
+	if check, previous := et.checkNodeTraveled(g.Previous, c); !check {
 		// fmt.Println("Start loop!")
+		c.inLoop += 1
 		c.stackEndLoop.Push(previous.(*gateway))
 		return et.handleForLoop(g, previous, c, r)
 	}
@@ -88,6 +89,7 @@ func (et *evaluateAll) handleForSplitGateway(g *gateway, c *context, r *result) 
 	// xu li cho gateway dong loop
 	if c.stackEndLoop.Size() > 0 && len(g.Next) == 2 && c.stackEndLoop.Top() == g {
 		// fmt.Println("End loop!")
+		c.inLoop -= 1
 		c.stackEndLoop.Pop()
 		r.currentCycleTime = 0
 		return nil
@@ -128,7 +130,7 @@ func (et *evaluateAll) handleForSplitGateway(g *gateway, c *context, r *result) 
 }
 
 // check xem co gateway da duoc duyet hay chua
-func (et *evaluateAll) checkNodeTravel(nodes []interface{}, c *context) (bool, interface{}) {
+func (et *evaluateAll) checkNodeTraveled(nodes []interface{}, c *context) (bool, interface{}) {
 	for _, n := range nodes {
 		if isGateway(n) {
 			id := n.(*gateway).Id
@@ -173,5 +175,8 @@ func (et *evaluateAll) handleForLoop(start interface{}, end interface{}, c *cont
 		nextNode = endGateway.Next[0]
 	}
 	r.currentCycleTime = timeResult / (1 - reloop)
+	if c.inLoop == 0 {
+		r.totalCycleTimeAllLoops += r.currentCycleTime
+	}
 	return nextNode
 }
