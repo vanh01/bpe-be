@@ -32,12 +32,14 @@ type context struct {
 	stackNextGateway    gateWayStack
 	stackEndLoop        gateWayStack
 	inXorBlock          int
+	inLoop              int
 }
 
 type result struct {
-	currentCycleTime      float64
-	numberOfOptionalTasks int
-	numberOfTotalTasks    int
+	currentCycleTime       float64
+	numberOfOptionalTasks  int
+	numberOfTotalTasks     int
+	totalCycleTimeAllLoops float64
 }
 
 // tao mot map chua node tu cai json ban dau
@@ -107,5 +109,7 @@ func (e *evaluateUsecase) Evaluate(body []byte) (map[string]interface{}, error) 
 	rs["numberOfOptionalTasks"] = rlt.numberOfOptionalTasks
 	rs["numberOfTotalTasks"] = rlt.numberOfTotalTasks
 	rs["flexibility"] = float64(rlt.numberOfOptionalTasks) / float64(rlt.numberOfTotalTasks)
+	rs["totalCycleTimeAllLoops"] = rlt.totalCycleTimeAllLoops
+	rs["quality"] = rlt.totalCycleTimeAllLoops / rlt.currentCycleTime
 	return rs, nil
 }
