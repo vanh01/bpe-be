@@ -35,15 +35,16 @@ func (et *traverse) visitForEvent(e *event, c *context, r *result) interface{} {
 func (et *traverse) visitForTask(tk *task, c *context, r *result) interface{} {
 	fmt.Printf("Visit: %-50s| %-20s\n", tk.Id, tk.Name)
 	if c.inLoop == 0 && c.inBlock == 0 {
-		block := blockCycleTime{Text: fmt.Sprintf("Step %d: calculate task %s", len(r.LogsCycleTime)+1, tk.Name), Blocks: nil}
+		block := blockCycleTime{Text: fmt.Sprintf("Step %d: calculate task %s", len(r.LogsCycleTime)+1, tk.Name), Blocks: []blockCycleTime{}}
 		r.LogsCycleTime = append(r.LogsCycleTime, block)
 	} else {
-		block := blockCycleTime{Text: fmt.Sprintf("Calculate task %s", tk.Name), Blocks: nil}
+		block := blockCycleTime{Text: fmt.Sprintf("Calculate task %s", tk.Name), Blocks: []blockCycleTime{}}
 		et.addBlockByLevel(r.LogsCycleTime, block, c.inBlock+c.inLoop)
 	}
 	nextNode := et.visit(tk.Next[0], c, r)
 	r.NumberOfTotalTasks += 1
 	if c.inXorBlock > 0 {
+		r.LogsFlexibility = append(r.LogsFlexibility, fmt.Sprintf("Task %s", tk.Name))
 		r.NumberOfOptionalTasks += 1
 	}
 	nextResult := r.CurrentCycleTime
@@ -83,10 +84,10 @@ func (et *traverse) handleForJoinGateway(g *gateway, c *context, r *result) inte
 	if check, previous := et.checkNodeTraveled(g.Previous, c); !check {
 		fmt.Println("Start loop!")
 		if c.inLoop == 0 && c.inBlock == 0 {
-			block := blockCycleTime{Text: fmt.Sprintf("Step %d: calculate loop", len(r.LogsCycleTime)+1), Blocks: nil}
+			block := blockCycleTime{Text: fmt.Sprintf("Step %d: calculate loop", len(r.LogsCycleTime)+1), Blocks: []blockCycleTime{}}
 			r.LogsCycleTime = append(r.LogsCycleTime, block)
 		} else {
-			block := blockCycleTime{Text: "Calculate loop", Blocks: nil}
+			block := blockCycleTime{Text: "Calculate loop", Blocks: []blockCycleTime{}}
 			et.addBlockByLevel(r.LogsCycleTime, block, c.inBlock+c.inLoop)
 		}
 		c.inLoop += 1
@@ -113,10 +114,10 @@ func (et *traverse) handleForSplitGateway(g *gateway, c *context, r *result) int
 	fmt.Println("Start gateway!")
 	// xu li cho split gateway binh thuong
 	if c.inLoop == 0 && c.inBlock == 0 {
-		block := blockCycleTime{Text: fmt.Sprintf("Step %d: calculate block %s", len(r.LogsCycleTime)+1, g.Name), Blocks: nil}
+		block := blockCycleTime{Text: fmt.Sprintf("Step %d: calculate block %s", len(r.LogsCycleTime)+1, g.Name), Blocks: []blockCycleTime{}}
 		r.LogsCycleTime = append(r.LogsCycleTime, block)
 	} else {
-		block := blockCycleTime{Text: fmt.Sprintf("Calculate block %s", g.Name), Blocks: nil}
+		block := blockCycleTime{Text: fmt.Sprintf("Calculate block %s", g.Name), Blocks: []blockCycleTime{}}
 		et.addBlockByLevel(r.LogsCycleTime, block, c.inBlock+c.inLoop)
 	}
 	c.inBlock += 1
