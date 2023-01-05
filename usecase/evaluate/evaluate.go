@@ -34,21 +34,29 @@ type context struct {
 	inXorBlock          int
 	inLoop              int
 	inBlock             int
-	nowBlock            string
 }
 
 // export result
 type blockCycleTime struct {
-	Text   string
-	Blocks []blockCycleTime
+	Text   string           `json:"text"`
+	Blocks []blockCycleTime `json:"blocks"`
+}
+
+type blockQuality struct {
+	Text              string  `json:"text"`
+	Start             string  `json:"start"`
+	End               string  `json:"end"`
+	CycleTime         float64 `json:"cycleTime"`
+	ReworkProbability float64 `json:"reworkProbability"`
 }
 
 type result struct {
-	CurrentCycleTime       float64
-	NumberOfOptionalTasks  int
-	NumberOfTotalTasks     int
-	TotalCycleTimeAllLoops float64
-	LogsCycleTime          []blockCycleTime
+	CurrentCycleTime       float64          `json:"currentCycleTime"`
+	NumberOfOptionalTasks  int              `json:"numberOfOptionalTasks"`
+	NumberOfTotalTasks     int              `json:"numberOfTotalTasks"`
+	TotalCycleTimeAllLoops float64          `json:"totalCycleTimeAllLoops"`
+	LogsCycleTime          []blockCycleTime `json:"logsCycleTime"`
+	LogsQuality            []blockQuality   `json:"logsQuality"`
 }
 
 // tao mot map chua node tu cai json ban dau
@@ -110,7 +118,7 @@ func (e *evaluateUsecase) Evaluate(body []byte) []byte {
 	env.mapNodeCreated = createNodeList(env.mapElement)
 	env.startNode = buildGraph(env.mapElement, &env.mapNodeCreated)
 	rlt := result{CurrentCycleTime: 0.0, NumberOfOptionalTasks: 0, NumberOfTotalTasks: 0, TotalCycleTimeAllLoops: 0.0}
-	evaluateTime := &evaluateAll{}
+	evaluateTime := &traverse{}
 	contextTime := context{listGateway: make(map[string]int), listGatewayTraveled: make(map[string]interface{}), inXorBlock: 0, inLoop: 0}
 	evaluateTime.visit(env.startNode, &contextTime, &rlt)
 	type export struct {
