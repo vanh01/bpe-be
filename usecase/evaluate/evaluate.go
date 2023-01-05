@@ -57,6 +57,7 @@ type result struct {
 	TotalCycleTimeAllLoops float64          `json:"totalCycleTimeAllLoops"`
 	LogsCycleTime          []blockCycleTime `json:"logsCycleTime"`
 	LogsQuality            []blockQuality   `json:"logsQuality"`
+	LogsFlexibility        []string         `json:"logsFlexibility"`
 }
 
 // tao mot map chua node tu cai json ban dau
@@ -117,7 +118,15 @@ func (e *evaluateUsecase) Evaluate(body []byte) []byte {
 	}
 	env.mapNodeCreated = createNodeList(env.mapElement)
 	env.startNode = buildGraph(env.mapElement, &env.mapNodeCreated)
-	rlt := result{CurrentCycleTime: 0.0, NumberOfOptionalTasks: 0, NumberOfTotalTasks: 0, TotalCycleTimeAllLoops: 0.0}
+	rlt := result{
+		CurrentCycleTime:       0.0,
+		NumberOfOptionalTasks:  0,
+		NumberOfTotalTasks:     0,
+		TotalCycleTimeAllLoops: 0.0,
+		LogsCycleTime:          []blockCycleTime{},
+		LogsQuality:            []blockQuality{},
+		LogsFlexibility:        []string{},
+	}
 	evaluateTime := &traverse{}
 	contextTime := context{listGateway: make(map[string]int), listGatewayTraveled: make(map[string]interface{}), inXorBlock: 0, inLoop: 0}
 	evaluateTime.visit(env.startNode, &contextTime, &rlt)
