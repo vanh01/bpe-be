@@ -1,5 +1,7 @@
 package evaluate
 
+import "fmt"
+
 type evaluateAll struct {
 }
 
@@ -12,41 +14,51 @@ func (et *evaluateAll) visit(i interface{}, c *context, r *result) interface{} {
 	case *gateway:
 		return et.visitForGateway(i.(*gateway), c, r)
 	}
-	r.currentCycleTime = 0
+	r.CurrentCycleTime = 0
 	return nil
 }
 
 func (et *evaluateAll) visitForEvent(e *event, c *context, r *result) interface{} {
-	// fmt.Printf("Visit: %-50s| %-20s\n", e.Id, e.Name)
+	fmt.Printf("Visit: %-50s| %-20s\n", e.Id, e.Name)
 	var totalCycleTime = 0.0
 	for _, n := range e.Next {
 		nextNode := et.visit(n, c, r)
-		nextResult := r.currentCycleTime
+		nextResult := r.CurrentCycleTime
 		totalCycleTime += nextResult
 		et.calculateCyclyTimeNextNode(nextNode, c, r)
-		totalCycleTime += r.currentCycleTime
+		totalCycleTime += r.CurrentCycleTime
 	}
-	r.currentCycleTime = totalCycleTime
+	r.CurrentCycleTime = totalCycleTime
 	return nil
 }
 
 func (et *evaluateAll) visitForTask(tk *task, c *context, r *result) interface{} {
-	// fmt.Printf("Visit: %-50s| %-20s\n", tk.Id, tk.Name)
-	nextNode := et.visit(tk.Next[0], c, r)
-	r.numberOfTotalTasks += 1
-	if c.inXorBlock > 0 {
-		r.numberOfOptionalTasks += 1
+	fmt.Printf("Visit: %-50s| %-20s\n", tk.Id, tk.Name)
+	if c.inLoop == 0 && c.inBlock == 0 {
+		block := blockCycleTime{Text: fmt.Sprintf("Step %d: calculate task %s", len(r.LogsCycleTime)+1, tk.Name), Blocks: nil}
+		r.LogsCycleTime = append(r.LogsCycleTime, block)
+	} else if c.nowBlock == "block" {
+		block := blockCycleTime{Text: fmt.Sprintf("Calculate task %s", tk.Name), Blocks: nil}
+		et.addBlockByLevel(r.LogsCycleTime, block, c.inBlock+c.inLoop)
+	} else if c.nowBlock == "loop" {
+		block := blockCycleTime{Text: fmt.Sprintf("Calculate task %s", tk.Name), Blocks: nil}
+		et.addBlockByLevel(r.LogsCycleTime, block, c.inLoop)
 	}
-	nextResult := r.currentCycleTime
+	nextNode := et.visit(tk.Next[0], c, r)
+	r.NumberOfTotalTasks += 1
+	if c.inXorBlock > 0 {
+		r.NumberOfOptionalTasks += 1
+	}
+	nextResult := r.CurrentCycleTime
 	totalCycleTime := tk.CycleTime + nextResult
 	et.calculateCyclyTimeNextNode(nextNode, c, r)
-	totalCycleTime += r.currentCycleTime
-	r.currentCycleTime = totalCycleTime
+	totalCycleTime += r.CurrentCycleTime
+	r.CurrentCycleTime = totalCycleTime
 	return nil
 }
 
 func (et *evaluateAll) visitForGateway(g *gateway, c *context, r *result) interface{} {
-	// fmt.Printf("Visit: %-50s| %-20s\n", g.Id, g.Name)
+	fmt.Printf("Visit: %-50s| %-20s\n", g.Id, g.Name)
 	c.listGatewayTraveled[g.Id] = g
 
 	if g.isJoinGateway() {
@@ -55,7 +67,7 @@ func (et *evaluateAll) visitForGateway(g *gateway, c *context, r *result) interf
 	if g.isSplitGateway() {
 		return et.handleForSplitGateway(g, c, r)
 	}
-	r.currentCycleTime = 0
+	r.CurrentCycleTime = 0
 	return nil
 }
 
@@ -67,19 +79,22 @@ func (et *evaluateAll) handleForJoinGateway(g *gateway, c *context, r *result) i
 	}
 	// check so lan da duyet cua cong join
 	if c.listGateway[g.Id] < len(g.Previous) {
-		r.currentCycleTime = 0
+		r.CurrentCycleTime = 0
 		return nil
 	}
 	// kiem tra xem day la mot gateway bat dau khoi loop hay khong
 	if check, previous := et.checkNodeTraveled(g.Previous, c); !check {
-		// fmt.Println("Start loop!")
+		fmt.Println("Start loop!")
+		c.nowBlock = "loop"
+		block := blockCycleTime{Text: fmt.Sprintf("Step %d: calculate loop", len(r.LogsCycleTime)+1), Blocks: nil}
+		r.LogsCycleTime = append(r.LogsCycleTime, block)
 		c.inLoop += 1
 		c.stackEndLoop.Push(previous.(*gateway))
 		return et.handleForLoop(g, previous, c, r)
 	}
-	// fmt.Println("End gateway!")
+	fmt.Println("End gateway!")
 	c.stackNextGateway.Push(g)
-	r.currentCycleTime = 0
+	r.CurrentCycleTime = 0
 	return nil
 }
 
@@ -88,22 +103,31 @@ func (et *evaluateAll) handleForSplitGateway(g *gateway, c *context, r *result) 
 	var nextNode interface{}
 	// xu li cho gateway dong loop
 	if c.stackEndLoop.Size() > 0 && len(g.Next) == 2 && c.stackEndLoop.Top() == g {
-		// fmt.Println("End loop!")
+		fmt.Println("End loop!")
 		c.inLoop -= 1
 		c.stackEndLoop.Pop()
-		r.currentCycleTime = 0
+		r.CurrentCycleTime = 0
 		return nil
 	}
-	// fmt.Println("Start gateway!")
+	fmt.Println("Start gateway!")
 	// xu li cho split gateway binh thuong
+	c.nowBlock = "block"
+	if c.inLoop == 0 && c.inBlock == 0 {
+		block := blockCycleTime{Text: fmt.Sprintf("Step %d: calculate block %s", len(r.LogsCycleTime)+1, g.Name), Blocks: nil}
+		r.LogsCycleTime = append(r.LogsCycleTime, block)
+	} else {
+		block := blockCycleTime{Text: fmt.Sprintf("Calculate block %s", g.Name), Blocks: nil}
+		et.addBlockByLevel(r.LogsCycleTime, block, c.inBlock+c.inLoop)
+	}
+	c.inBlock += 1
 	if g.Name == "ExclusiveGateway" {
 		c.inXorBlock += 1
 	}
 	for i, branch := range g.Next {
 		nextN := et.visit(branch, c, r)
-		branchCycleTime := r.currentCycleTime
+		branchCycleTime := r.CurrentCycleTime
 		et.calculateCyclyTimeNextNode(nextN, c, r)
-		branchCycleTime += r.currentCycleTime
+		branchCycleTime += r.CurrentCycleTime
 		nextNode = nil
 		switch g.Name {
 		case "ParallelGateway":
@@ -112,7 +136,7 @@ func (et *evaluateAll) handleForSplitGateway(g *gateway, c *context, r *result) 
 			}
 		case "InclusiveGateway":
 			// TODO: Handle or gateway
-			r.currentCycleTime = 0
+			r.CurrentCycleTime = 0
 			return nil
 		case "ExclusiveGateway":
 			totalCycleTime += g.branchingProbabilities[i] * branchCycleTime
@@ -121,11 +145,12 @@ func (et *evaluateAll) handleForSplitGateway(g *gateway, c *context, r *result) 
 	if g.Name == "ExclusiveGateway" {
 		c.inXorBlock -= 1
 	}
+	c.inBlock -= 1
 	if c.stackNextGateway.IsNotEmpty() {
 		nextNode, _ = c.stackNextGateway.Pop()
 		nextNode = nextNode.(*gateway).Next[0]
 	}
-	r.currentCycleTime = totalCycleTime
+	r.CurrentCycleTime = totalCycleTime
 	return nextNode
 }
 
@@ -147,11 +172,11 @@ func (et *evaluateAll) calculateCyclyTimeNextNode(nextNode interface{}, c *conte
 	timeResult := 0.0
 	for nextNode != nil {
 		nextNextNode := et.visit(nextNode, c, r)
-		nextNextResult := r.currentCycleTime
+		nextNextResult := r.CurrentCycleTime
 		nextNode = nextNextNode
 		timeResult += nextNextResult
 	}
-	r.currentCycleTime = timeResult
+	r.CurrentCycleTime = timeResult
 }
 
 // xu li tinh toan cho loop
@@ -160,7 +185,7 @@ func (et *evaluateAll) handleForLoop(start interface{}, end interface{}, c *cont
 	endGateway := end.(*gateway)
 	// timeResult, _ := et.visit(startGateway.Next[0], c, r)
 	et.visit(startGateway.Next[0], c, r)
-	timeResult := r.currentCycleTime
+	timeResult := r.CurrentCycleTime
 	var reloop float64
 	var nextNode interface{}
 
@@ -174,9 +199,70 @@ func (et *evaluateAll) handleForLoop(start interface{}, end interface{}, c *cont
 	} else {
 		nextNode = endGateway.Next[0]
 	}
-	r.currentCycleTime = timeResult / (1 - reloop)
+	r.CurrentCycleTime = timeResult / (1 - reloop)
 	if c.inLoop == 0 {
-		r.totalCycleTimeAllLoops += r.currentCycleTime
+		r.TotalCycleTimeAllLoops += r.CurrentCycleTime
 	}
 	return nextNode
+}
+
+// level must be greater than 0
+// example:
+// [
+//
+//	    {
+//	        "Text": "Step 1: calculate task 1",
+//	        "Blocks": null
+//	    },
+//	    {
+//	        "Text": "Step 2: calculate block ExclusiveGateway",
+//	        "Blocks": [
+//	            {
+//	                "Text": "Calculate task 2",
+//	                "Blocks": null
+//	            },
+//	            {
+//	                "Text": "Calculate block ParallelGateway",
+//	                "Blocks": null
+//	            },
+//	        ]
+//	    },
+//	]
+//
+// add(logsCycletime, {"Text": "Calculate task 3", "Blocks": null}, 1) to parallel block, result:
+// [
+//
+//	    {
+//	        "Text": "Step 1: calculate task 1",
+//	        "Blocks": null
+//	    },
+//	    {
+//	        "Text": "Step 2: calculate block ExclusiveGateway",
+//	        "Blocks": [
+//	            {
+//	                "Text": "Calculate task 2",
+//	                "Blocks": null
+//	            },
+//	            {
+//	                "Text": "Calculate block ParallelGateway",
+//	                "Blocks": [
+//						{
+//							"Text": "Calculate task 3",
+//							"Blocks": null,
+//						},
+//					]
+//	            },
+//	        ]
+//	    },
+//	]
+func (et *evaluateAll) addBlockByLevel(block []blockCycleTime, newBlock blockCycleTime, level int) {
+	var temp []blockCycleTime
+	var tempParent []blockCycleTime = block
+	temp = block
+	for ; level > 0; level-- {
+		tempParent = temp
+		temp = temp[len(temp)-1].Blocks
+	}
+	temp = append(temp, newBlock)
+	tempParent[len(tempParent)-1].Blocks = temp
 }
