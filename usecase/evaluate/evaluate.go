@@ -33,13 +33,22 @@ type context struct {
 	stackEndLoop        gateWayStack
 	inXorBlock          int
 	inLoop              int
+	inBlock             int
+	nowBlock            string
+}
+
+// export result
+type blockCycleTime struct {
+	Text   string
+	Blocks []blockCycleTime
 }
 
 type result struct {
-	currentCycleTime       float64
-	numberOfOptionalTasks  int
-	numberOfTotalTasks     int
-	totalCycleTimeAllLoops float64
+	CurrentCycleTime       float64
+	NumberOfOptionalTasks  int
+	NumberOfTotalTasks     int
+	TotalCycleTimeAllLoops float64
+	LogsCycleTime          []blockCycleTime
 }
 
 // tao mot map chua node tu cai json ban dau
@@ -93,23 +102,30 @@ func buildGraph(mapElement map[string]element, mapNodeCreated *map[string]interf
 	return startNode
 }
 
-func (e *evaluateUsecase) Evaluate(body []byte) (map[string]interface{}, error) {
+func (e *evaluateUsecase) Evaluate(body []byte) []byte {
 	env := &env{}
 	if err := json.Unmarshal(body, &env.mapElement); err != nil {
-		return nil, err
+		return nil
 	}
 	env.mapNodeCreated = createNodeList(env.mapElement)
 	env.startNode = buildGraph(env.mapElement, &env.mapNodeCreated)
-	rlt := result{currentCycleTime: 0.0, numberOfOptionalTasks: 0, numberOfTotalTasks: 0}
+	rlt := result{CurrentCycleTime: 0.0, NumberOfOptionalTasks: 0, NumberOfTotalTasks: 0, TotalCycleTimeAllLoops: 0.0}
 	evaluateTime := &evaluateAll{}
-	contextTime := context{listGateway: make(map[string]int), listGatewayTraveled: make(map[string]interface{})}
+	contextTime := context{listGateway: make(map[string]int), listGatewayTraveled: make(map[string]interface{}), inXorBlock: 0, inLoop: 0}
 	evaluateTime.visit(env.startNode, &contextTime, &rlt)
-	rs := make(map[string]interface{})
-	rs["cycle_time"] = rlt.currentCycleTime
-	rs["numberOfOptionalTasks"] = rlt.numberOfOptionalTasks
-	rs["numberOfTotalTasks"] = rlt.numberOfTotalTasks
-	rs["flexibility"] = float64(rlt.numberOfOptionalTasks) / float64(rlt.numberOfTotalTasks)
-	rs["totalCycleTimeAllLoops"] = rlt.totalCycleTimeAllLoops
-	rs["quality"] = rlt.totalCycleTimeAllLoops / rlt.currentCycleTime
-	return rs, nil
+	type export struct {
+		result
+		Flexibility float64 `json:"flexibility"`
+		Quality     float64 `json:"quality"`
+	}
+	rs := export{
+		result:      rlt,
+		Flexibility: float64(rlt.NumberOfOptionalTasks) / float64(rlt.NumberOfTotalTasks),
+		Quality:     rlt.TotalCycleTimeAllLoops / rlt.CurrentCycleTime,
+	}
+	result, err := json.Marshal(rs)
+	if err != nil {
+		return nil
+	}
+	return result
 }
