@@ -2,10 +2,10 @@ package evaluate
 
 import "fmt"
 
-type evaluateAll struct {
+type traverse struct {
 }
 
-func (et *evaluateAll) visit(i interface{}, c *context, r *result) interface{} {
+func (et *traverse) visit(i interface{}, c *context, r *result) interface{} {
 	switch i.(type) {
 	case *event:
 		return et.visitForEvent(i.(*event), c, r)
@@ -18,7 +18,7 @@ func (et *evaluateAll) visit(i interface{}, c *context, r *result) interface{} {
 	return nil
 }
 
-func (et *evaluateAll) visitForEvent(e *event, c *context, r *result) interface{} {
+func (et *traverse) visitForEvent(e *event, c *context, r *result) interface{} {
 	fmt.Printf("Visit: %-50s| %-20s\n", e.Id, e.Name)
 	var totalCycleTime = 0.0
 	for _, n := range e.Next {
@@ -32,17 +32,14 @@ func (et *evaluateAll) visitForEvent(e *event, c *context, r *result) interface{
 	return nil
 }
 
-func (et *evaluateAll) visitForTask(tk *task, c *context, r *result) interface{} {
+func (et *traverse) visitForTask(tk *task, c *context, r *result) interface{} {
 	fmt.Printf("Visit: %-50s| %-20s\n", tk.Id, tk.Name)
 	if c.inLoop == 0 && c.inBlock == 0 {
 		block := blockCycleTime{Text: fmt.Sprintf("Step %d: calculate task %s", len(r.LogsCycleTime)+1, tk.Name), Blocks: nil}
 		r.LogsCycleTime = append(r.LogsCycleTime, block)
-	} else if c.nowBlock == "block" {
+	} else {
 		block := blockCycleTime{Text: fmt.Sprintf("Calculate task %s", tk.Name), Blocks: nil}
 		et.addBlockByLevel(r.LogsCycleTime, block, c.inBlock+c.inLoop)
-	} else if c.nowBlock == "loop" {
-		block := blockCycleTime{Text: fmt.Sprintf("Calculate task %s", tk.Name), Blocks: nil}
-		et.addBlockByLevel(r.LogsCycleTime, block, c.inLoop)
 	}
 	nextNode := et.visit(tk.Next[0], c, r)
 	r.NumberOfTotalTasks += 1
@@ -57,7 +54,7 @@ func (et *evaluateAll) visitForTask(tk *task, c *context, r *result) interface{}
 	return nil
 }
 
-func (et *evaluateAll) visitForGateway(g *gateway, c *context, r *result) interface{} {
+func (et *traverse) visitForGateway(g *gateway, c *context, r *result) interface{} {
 	fmt.Printf("Visit: %-50s| %-20s\n", g.Id, g.Name)
 	c.listGatewayTraveled[g.Id] = g
 
@@ -71,7 +68,7 @@ func (et *evaluateAll) visitForGateway(g *gateway, c *context, r *result) interf
 	return nil
 }
 
-func (et *evaluateAll) handleForJoinGateway(g *gateway, c *context, r *result) interface{} {
+func (et *traverse) handleForJoinGateway(g *gateway, c *context, r *result) interface{} {
 	if _, check := c.listGateway[g.Id]; check {
 		c.listGateway[g.Id] += 1
 	} else {
@@ -85,9 +82,13 @@ func (et *evaluateAll) handleForJoinGateway(g *gateway, c *context, r *result) i
 	// kiem tra xem day la mot gateway bat dau khoi loop hay khong
 	if check, previous := et.checkNodeTraveled(g.Previous, c); !check {
 		fmt.Println("Start loop!")
-		c.nowBlock = "loop"
-		block := blockCycleTime{Text: fmt.Sprintf("Step %d: calculate loop", len(r.LogsCycleTime)+1), Blocks: nil}
-		r.LogsCycleTime = append(r.LogsCycleTime, block)
+		if c.inLoop == 0 && c.inBlock == 0 {
+			block := blockCycleTime{Text: fmt.Sprintf("Step %d: calculate loop", len(r.LogsCycleTime)+1), Blocks: nil}
+			r.LogsCycleTime = append(r.LogsCycleTime, block)
+		} else {
+			block := blockCycleTime{Text: "Calculate loop", Blocks: nil}
+			et.addBlockByLevel(r.LogsCycleTime, block, c.inBlock+c.inLoop)
+		}
 		c.inLoop += 1
 		c.stackEndLoop.Push(previous.(*gateway))
 		return et.handleForLoop(g, previous, c, r)
@@ -98,7 +99,7 @@ func (et *evaluateAll) handleForJoinGateway(g *gateway, c *context, r *result) i
 	return nil
 }
 
-func (et *evaluateAll) handleForSplitGateway(g *gateway, c *context, r *result) interface{} {
+func (et *traverse) handleForSplitGateway(g *gateway, c *context, r *result) interface{} {
 	var totalCycleTime = 0.0
 	var nextNode interface{}
 	// xu li cho gateway dong loop
@@ -111,7 +112,6 @@ func (et *evaluateAll) handleForSplitGateway(g *gateway, c *context, r *result) 
 	}
 	fmt.Println("Start gateway!")
 	// xu li cho split gateway binh thuong
-	c.nowBlock = "block"
 	if c.inLoop == 0 && c.inBlock == 0 {
 		block := blockCycleTime{Text: fmt.Sprintf("Step %d: calculate block %s", len(r.LogsCycleTime)+1, g.Name), Blocks: nil}
 		r.LogsCycleTime = append(r.LogsCycleTime, block)
@@ -155,7 +155,7 @@ func (et *evaluateAll) handleForSplitGateway(g *gateway, c *context, r *result) 
 }
 
 // check xem co gateway da duoc duyet hay chua
-func (et *evaluateAll) checkNodeTraveled(nodes []interface{}, c *context) (bool, interface{}) {
+func (et *traverse) checkNodeTraveled(nodes []interface{}, c *context) (bool, interface{}) {
 	for _, n := range nodes {
 		if isGateway(n) {
 			id := n.(*gateway).Id
@@ -168,7 +168,7 @@ func (et *evaluateAll) checkNodeTraveled(nodes []interface{}, c *context) (bool,
 }
 
 // tinh toan cycle time cho nhung next node tiep theo
-func (et *evaluateAll) calculateCyclyTimeNextNode(nextNode interface{}, c *context, r *result) {
+func (et *traverse) calculateCyclyTimeNextNode(nextNode interface{}, c *context, r *result) {
 	timeResult := 0.0
 	for nextNode != nil {
 		nextNextNode := et.visit(nextNode, c, r)
@@ -180,28 +180,29 @@ func (et *evaluateAll) calculateCyclyTimeNextNode(nextNode interface{}, c *conte
 }
 
 // xu li tinh toan cho loop
-func (et *evaluateAll) handleForLoop(start interface{}, end interface{}, c *context, r *result) interface{} {
+func (et *traverse) handleForLoop(start interface{}, end interface{}, c *context, r *result) interface{} {
 	startGateway := start.(*gateway)
 	endGateway := end.(*gateway)
-	// timeResult, _ := et.visit(startGateway.Next[0], c, r)
-	et.visit(startGateway.Next[0], c, r)
+	nextN := et.visit(startGateway.Next[0], c, r)
 	timeResult := r.CurrentCycleTime
+	et.calculateCyclyTimeNextNode(nextN, c, r)
+	timeResult += r.CurrentCycleTime
 	var reloop float64
 	var nextNode interface{}
 
+	// len(endGateway.Next) = 2
 	for i, n := range endGateway.Next {
 		if isGateway(n) && start == n {
 			reloop = endGateway.branchingProbabilities[i]
+		} else {
+			nextNode = endGateway.Next[i]
 		}
-	}
-	if isGateway(endGateway.Next[0]) {
-		nextNode = endGateway.Next[1]
-	} else {
-		nextNode = endGateway.Next[0]
 	}
 	r.CurrentCycleTime = timeResult / (1 - reloop)
 	if c.inLoop == 0 {
 		r.TotalCycleTimeAllLoops += r.CurrentCycleTime
+		block := blockQuality{Text: "Loop", Start: startGateway.Id, End: endGateway.Id, CycleTime: timeResult, ReworkProbability: 1 - reloop}
+		r.LogsQuality = append(r.LogsQuality, block)
 	}
 	return nextNode
 }
@@ -255,7 +256,7 @@ func (et *evaluateAll) handleForLoop(start interface{}, end interface{}, c *cont
 //	        ]
 //	    },
 //	]
-func (et *evaluateAll) addBlockByLevel(block []blockCycleTime, newBlock blockCycleTime, level int) {
+func (et *traverse) addBlockByLevel(block []blockCycleTime, newBlock blockCycleTime, level int) {
 	var temp []blockCycleTime
 	var tempParent []blockCycleTime = block
 	temp = block
