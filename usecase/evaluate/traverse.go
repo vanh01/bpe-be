@@ -34,13 +34,8 @@ func (et *traverse) visitForEvent(e *event, c *context, r *result) interface{} {
 
 func (et *traverse) visitForTask(tk *task, c *context, r *result) interface{} {
 	fmt.Printf("Visit: %-50s| %-20s\n", tk.Id, tk.Name)
-	if c.inLoop == 0 && c.inBlock == 0 {
-		block := blockCycleTime{Text: fmt.Sprintf("Step %d: calculate task %s", len(r.LogsCycleTime)+1, tk.Name), Blocks: []blockCycleTime{}}
-		r.LogsCycleTime = append(r.LogsCycleTime, block)
-	} else {
-		block := blockCycleTime{Text: fmt.Sprintf("Calculate task %s", tk.Name), Blocks: []blockCycleTime{}}
-		et.addBlockByLevel(r.LogsCycleTime, block, c.inBlock+c.inLoop)
-	}
+	block := blockCycleTime{Text: fmt.Sprintf("Calculate task %s: %f", tk.Name, tk.CycleTime), Blocks: []blockCycleTime{}}
+	et.addNewBlockByLevel(&r.LogsCycleTime, block, c.inBlock+c.inLoop)
 	nextNode := et.visit(tk.Next[0], c, r)
 	r.NumberOfTotalTasks += 1
 	if c.inXorBlock > 0 {
@@ -83,16 +78,13 @@ func (et *traverse) handleForJoinGateway(g *gateway, c *context, r *result) inte
 	// kiem tra xem day la mot gateway bat dau khoi loop hay khong
 	if check, previous := et.checkNodeTraveled(g.Previous, c); !check {
 		fmt.Println("Start loop!")
-		if c.inLoop == 0 && c.inBlock == 0 {
-			block := blockCycleTime{Text: fmt.Sprintf("Step %d: calculate loop", len(r.LogsCycleTime)+1), Blocks: []blockCycleTime{}}
-			r.LogsCycleTime = append(r.LogsCycleTime, block)
-		} else {
-			block := blockCycleTime{Text: "Calculate loop", Blocks: []blockCycleTime{}}
-			et.addBlockByLevel(r.LogsCycleTime, block, c.inBlock+c.inLoop)
-		}
+		block := blockCycleTime{Text: fmt.Sprintf("Calculate loop %s: ", g.Id), Blocks: []blockCycleTime{}}
+		currentBlock := et.addNewBlockByLevel(&r.LogsCycleTime, block, c.inBlock+c.inLoop)
 		c.inLoop += 1
 		c.stackEndLoop.Push(previous.(*gateway))
-		return et.handleForLoop(g, previous, c, r)
+		nextNode := et.handleForLoop(g, previous, c, r)
+		currentBlock.Text += fmt.Sprint(r.CurrentCycleTime)
+		return nextNode
 	}
 	fmt.Println("End gateway!")
 	c.stackNextGateway.Push(g)
@@ -113,13 +105,8 @@ func (et *traverse) handleForSplitGateway(g *gateway, c *context, r *result) int
 	}
 	fmt.Println("Start gateway!")
 	// xu li cho split gateway binh thuong
-	if c.inLoop == 0 && c.inBlock == 0 {
-		block := blockCycleTime{Text: fmt.Sprintf("Step %d: calculate block %s", len(r.LogsCycleTime)+1, g.Name), Blocks: []blockCycleTime{}}
-		r.LogsCycleTime = append(r.LogsCycleTime, block)
-	} else {
-		block := blockCycleTime{Text: fmt.Sprintf("Calculate block %s", g.Name), Blocks: []blockCycleTime{}}
-		et.addBlockByLevel(r.LogsCycleTime, block, c.inBlock+c.inLoop)
-	}
+	block := blockCycleTime{Text: fmt.Sprintf("Calculate block %s: ", g.Name), Blocks: []blockCycleTime{}}
+	currentBlock := et.addNewBlockByLevel(&r.LogsCycleTime, block, c.inBlock+c.inLoop)
 	c.inBlock += 1
 	if g.Name == "ExclusiveGateway" {
 		c.inXorBlock += 1
@@ -152,6 +139,7 @@ func (et *traverse) handleForSplitGateway(g *gateway, c *context, r *result) int
 		nextNode = nextNode.(*gateway).Next[0]
 	}
 	r.CurrentCycleTime = totalCycleTime
+	currentBlock.Text += fmt.Sprint(totalCycleTime)
 	return nextNode
 }
 
@@ -257,14 +245,12 @@ func (et *traverse) handleForLoop(start interface{}, end interface{}, c *context
 //	        ]
 //	    },
 //	]
-func (et *traverse) addBlockByLevel(block []blockCycleTime, newBlock blockCycleTime, level int) {
-	var temp []blockCycleTime
-	var tempParent []blockCycleTime = block
-	temp = block
+func (et *traverse) addNewBlockByLevel(block *[]blockCycleTime, newBlock blockCycleTime, level int) *blockCycleTime {
+	var temp *[]blockCycleTime = block
 	for ; level > 0; level-- {
-		tempParent = temp
-		temp = temp[len(temp)-1].Blocks
+		temp = &((*temp)[len(*temp)-1].Blocks)
 	}
-	temp = append(temp, newBlock)
-	tempParent[len(tempParent)-1].Blocks = temp
+	newBlock.Text = fmt.Sprintf("Step %d: %s", len(*temp)+1, newBlock.Text)
+	*temp = append(*temp, newBlock)
+	return &(*temp)[len(*temp)-1]
 }
