@@ -50,14 +50,19 @@ type blockQuality struct {
 	ReworkProbability float64 `json:"reworkProbability"`
 }
 
+type blockFlexibility struct {
+	Text    string   `json:"text"`
+	TaskIDs []string `json:"taskIDs"`
+}
+
 type result struct {
-	CurrentCycleTime       float64          `json:"currentCycleTime"`
-	NumberOfOptionalTasks  int              `json:"numberOfOptionalTasks"`
-	NumberOfTotalTasks     int              `json:"numberOfTotalTasks"`
-	TotalCycleTimeAllLoops float64          `json:"totalCycleTimeAllLoops"`
-	LogsCycleTime          []blockCycleTime `json:"logsCycleTime"`
-	LogsQuality            []blockQuality   `json:"logsQuality"`
-	LogsFlexibility        []string         `json:"logsFlexibility"`
+	CurrentCycleTime       float64            `json:"currentCycleTime"`
+	NumberOfOptionalTasks  int                `json:"numberOfOptionalTasks"`
+	NumberOfTotalTasks     int                `json:"numberOfTotalTasks"`
+	TotalCycleTimeAllLoops float64            `json:"totalCycleTimeAllLoops"`
+	LogsCycleTime          []blockCycleTime   `json:"logsCycleTime"`
+	LogsQuality            []blockQuality     `json:"logsQuality"`
+	LogsFlexibility        []blockFlexibility `json:"logsFlexibility"`
 }
 
 // tao mot map chua node tu cai json ban dau
@@ -125,7 +130,7 @@ func (e *evaluateUsecase) Evaluate(body []byte) []byte {
 		TotalCycleTimeAllLoops: 0.0,
 		LogsCycleTime:          []blockCycleTime{},
 		LogsQuality:            []blockQuality{},
-		LogsFlexibility:        []string{},
+		LogsFlexibility:        []blockFlexibility{},
 	}
 	evaluateTime := &traverse{}
 	contextTime := context{listGateway: make(map[string]int), listGatewayTraveled: make(map[string]interface{}), inXorBlock: 0, inLoop: 0}
