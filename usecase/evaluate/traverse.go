@@ -36,12 +36,12 @@ func (et *traverse) visitForTask(tk *task, c *context, r *result) interface{} {
 	fmt.Printf("Visit: %-50s| %-20s\n", tk.Id, tk.Name)
 	block := blockCycleTime{Text: fmt.Sprintf("Calculate task %s: %f", tk.Name, tk.CycleTime), Blocks: []blockCycleTime{}}
 	et.addNewBlockByLevel(&r.LogsCycleTime, block, c.inBlock+c.inLoop)
-	nextNode := et.visit(tk.Next[0], c, r)
 	r.NumberOfTotalTasks += 1
 	if c.inXorBlock > 0 {
-		r.LogsFlexibility = append(r.LogsFlexibility, fmt.Sprintf("Task %s", tk.Name))
+		r.LogsFlexibility[len(r.LogsFlexibility)-1].TaskIDs = append(r.LogsFlexibility[len(r.LogsFlexibility)-1].TaskIDs, fmt.Sprintf("Task %s", tk.Name))
 		r.NumberOfOptionalTasks += 1
 	}
+	nextNode := et.visit(tk.Next[0], c, r)
 	nextResult := r.CurrentCycleTime
 	totalCycleTime := tk.CycleTime + nextResult
 	et.calculateCyclyTimeNextNode(nextNode, c, r)
@@ -109,6 +109,9 @@ func (et *traverse) handleForSplitGateway(g *gateway, c *context, r *result) int
 	currentBlock := et.addNewBlockByLevel(&r.LogsCycleTime, block, c.inBlock+c.inLoop)
 	c.inBlock += 1
 	if g.Name == "ExclusiveGateway" {
+		if c.inXorBlock == 0 {
+			r.LogsFlexibility = append(r.LogsFlexibility, blockFlexibility{Text: g.Id, TaskIDs: []string{}})
+		}
 		c.inXorBlock += 1
 	}
 	for i, branch := range g.Next {
