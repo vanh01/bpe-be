@@ -2,6 +2,7 @@ package evaluate
 
 import (
 	"encoding/json"
+	"fmt"
 )
 
 type evaluateUsecase struct{}
@@ -18,6 +19,12 @@ type element struct {
 	Type                   string    `json:"type"`
 	CycleTime              float64   `json:"cycleTime"`
 	BranchingProbabilities []float64 `json:"branchingProbabilities"`
+	linkElement
+}
+
+type linkElement struct {
+	Source []string `json:"source"`
+	Target string   `json:"target"`
 }
 
 type env struct {
@@ -94,26 +101,29 @@ func getNodeOfIds(ids []string, mapNodeCreated *map[string]interface{}) []interf
 
 // lien ket cac node lai voi nhau
 func buildGraph(mapElement map[string]element, mapNodeCreated *map[string]interface{}) *event {
-	var startNode *event
-	for _, i := range mapElement {
-		if i.Type == "event" {
-			event := (*mapNodeCreated)[i.Id].(*event)
-			event.Previous = getNodeOfIds(i.Incoming, mapNodeCreated)
-			event.Next = getNodeOfIds(i.Outgoing, mapNodeCreated)
-			if event.Name == "StartEvent" {
-				startNode = event
-			}
-		} else if i.Type == "task" {
-			task := (*mapNodeCreated)[i.Id].(*task)
-			task.Previous = getNodeOfIds(i.Incoming, mapNodeCreated)
-			task.Next = getNodeOfIds(i.Outgoing, mapNodeCreated)
-		} else if i.Type == "gateway" {
-			gateway := (*mapNodeCreated)[i.Id].(*gateway)
-			gateway.Previous = getNodeOfIds(i.Incoming, mapNodeCreated)
-			gateway.Next = getNodeOfIds(i.Outgoing, mapNodeCreated)
+	var startNode event
+	g := graphBuilder{
+		graph:      mapNodeCreated,
+		mapElement: mapElement,
+	}
+	for _, ele := range mapElement {
+		if ele.Type == "event" {
+			g.inputElement = ele
+			g.buildEventNode(&startNode)
+			mapNodeCreated = g.graph
+		} else if ele.Type == "task" {
+			task := (*mapNodeCreated)[ele.Id].(*task)
+			task.Previous = getNodeOfIds(ele.Incoming, mapNodeCreated)
+			task.Next = getNodeOfIds(ele.Outgoing, mapNodeCreated)
+		} else if ele.Type == "gateway" {
+			gateway := (*mapNodeCreated)[ele.Id].(*gateway)
+			gateway.Previous = getNodeOfIds(ele.Incoming, mapNodeCreated)
+			gateway.Next = getNodeOfIds(ele.Outgoing, mapNodeCreated)
 		}
 	}
-	return startNode
+	fmt.Println(g.graph)
+
+	return &startNode
 }
 
 func (e *evaluateUsecase) Evaluate(body []byte) []byte {
@@ -123,6 +133,8 @@ func (e *evaluateUsecase) Evaluate(body []byte) []byte {
 	}
 	env.mapNodeCreated = createNodeList(env.mapElement)
 	env.startNode = buildGraph(env.mapElement, &env.mapNodeCreated)
+	fmt.Println((env.mapNodeCreated)["Activity_08cpxjx"])
+
 	rlt := result{
 		CurrentCycleTime:       0.0,
 		NumberOfOptionalTasks:  0,
